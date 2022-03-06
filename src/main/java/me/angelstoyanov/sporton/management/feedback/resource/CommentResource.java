@@ -16,6 +16,7 @@ import javax.inject.Inject;
 import javax.ws.rs.*;
 import javax.ws.rs.core.MediaType;
 import java.util.List;
+import java.util.UUID;
 
 @Path("/")
 @Consumes(MediaType.APPLICATION_JSON)
@@ -34,8 +35,13 @@ public class CommentResource {
     @Consumes(MediaType.MULTIPART_FORM_DATA)
     @Path("/comment")
     public RestResponse<Comment> createComment(@MultipartForm CommentMultipartFormDTO commentMultipartFormDTO) {
+        try {
+            UUID.fromString(commentMultipartFormDTO.getUserId());
+        } catch (IllegalArgumentException exception) {
+            RestResponse.ResponseBuilder.ok((Comment) null).status(RestResponse.Status.BAD_REQUEST).build();
+        }
         String attachment = null;
-        Comment comment = new Comment(new ObjectId(commentMultipartFormDTO.getUserId()),
+        Comment comment = new Comment(commentMultipartFormDTO.getUserId(),
                 new ObjectId(commentMultipartFormDTO.getPitchId()), commentMultipartFormDTO.getContent(), null);
         comment = commentRepository.addComment(comment);
         attachment = uploadAttachment(commentMultipartFormDTO, comment.getId().toString());

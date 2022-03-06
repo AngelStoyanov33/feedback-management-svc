@@ -25,7 +25,7 @@ public class Rating {
 
     @JsonProperty("user_id")
     @BsonProperty("user_id")
-    private ObjectId userId;
+    private String userId;
 
     @JsonProperty("pitch_id")
     @BsonProperty("pitch_id")
@@ -35,7 +35,7 @@ public class Rating {
     @BsonProperty("grade")
     private Double rating;
 
-    public Rating(ObjectId id, String createdAt, ObjectId userId, ObjectId pitchId, Double rating) {
+    public Rating(ObjectId id, String createdAt, String userId, ObjectId pitchId, Double rating) {
         this.id = id;
         this.createdAt = createdAt;
         this.userId = userId;
@@ -43,7 +43,7 @@ public class Rating {
         this.rating = rating;
     }
 
-    public Rating(ObjectId id, ObjectId userId, ObjectId pitchId, Double rating) {
+    public Rating(ObjectId id, String userId, ObjectId pitchId, Double rating) {
         this.id = id;
         this.userId = userId;
         this.pitchId = pitchId;
@@ -69,11 +69,11 @@ public class Rating {
         this.createdAt = createdAt;
     }
 
-    public ObjectId getUserId() {
+    public String getUserId() {
         return userId;
     }
 
-    public void setUserId(ObjectId userId) {
+    public void setUserId(String userId) {
         this.userId = userId;
     }
 
