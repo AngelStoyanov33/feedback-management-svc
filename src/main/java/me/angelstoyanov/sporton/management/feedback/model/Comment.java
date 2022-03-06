@@ -25,7 +25,7 @@ public class Comment {
 
     @JsonProperty("user_id")
     @BsonProperty("user_id")
-    private ObjectId userId;
+    private String userId;
 
     @JsonProperty("pitch_id")
     @BsonProperty("pitch_id")
@@ -40,7 +40,7 @@ public class Comment {
     private String attachment;
 
 
-    public Comment(ObjectId id, String createdAt, ObjectId userId, ObjectId pitchId, String content, String attachment) {
+    public Comment(ObjectId id, String createdAt, String userId, ObjectId pitchId, String content, String attachment) {
         this.id = id;
         this.createdAt = createdAt;
         this.userId = userId;
@@ -49,7 +49,7 @@ public class Comment {
         this.attachment = attachment;
     }
 
-    public Comment(ObjectId userId, ObjectId pitchId, String content, String attachment) {
+    public Comment(String userId, ObjectId pitchId, String content, String attachment) {
         this.userId = userId;
         this.pitchId = pitchId;
         this.content = content;
@@ -75,11 +75,11 @@ public class Comment {
         this.createdAt = createdAt;
     }
 
-    public ObjectId getUserId() {
+    public String getUserId() {
         return userId;
     }
 
-    public void setUserId(ObjectId userId) {
+    public void setUserId(String userId) {
         this.userId = userId;
     }
 
