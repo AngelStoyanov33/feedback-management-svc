@@ -29,7 +29,7 @@ public class RatingRepository implements PanacheMongoRepository<Rating> {
     }
 
     public Rating findRatingByUserIdAndPitchId(String userId, String pitchId) {
-        return find(String.format(Locale.US, "{\"pitch_id\":ObjectId(\"%s\"),\"user_id\":ObjectId(\"%s\")}", pitchId, userId)).firstResult();
+        return find(String.format(Locale.US, "{\"pitch_id\":ObjectId(\"%s\"),\"user_id\":\"%s\"}", pitchId, userId)).firstResult();
     }
 
     public List<Rating> getRatingsByPitchId(String pitchId) {
