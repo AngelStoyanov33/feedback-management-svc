@@ -1,20 +1,20 @@
 package me.angelstoyanov.sporton.management.feedback.resource;
 
 import io.quarkus.runtime.annotations.RegisterForReflection;
+import io.smallrye.common.constraint.NotNull;
 import me.angelstoyanov.sporton.management.feedback.client.RestClientWrapper;
 import me.angelstoyanov.sporton.management.feedback.exception.CommentNotExistsException;
 import me.angelstoyanov.sporton.management.feedback.model.Comment;
 import me.angelstoyanov.sporton.management.feedback.model.StorageEntity;
-import me.angelstoyanov.sporton.management.feedback.model.dto.CommentMultipartFormDTO;
 import me.angelstoyanov.sporton.management.feedback.repository.CommentRepository;
 import org.bson.types.ObjectId;
-import org.jboss.resteasy.reactive.MultipartForm;
 import org.jboss.resteasy.reactive.ResponseStatus;
 import org.jboss.resteasy.reactive.RestResponse;
 
 import javax.inject.Inject;
 import javax.ws.rs.*;
 import javax.ws.rs.core.MediaType;
+import java.io.File;
 import java.util.List;
 import java.util.UUID;
 
@@ -32,21 +32,22 @@ public class CommentResource {
 
     @POST
     @ResponseStatus(201)
-    @Consumes(MediaType.MULTIPART_FORM_DATA)
-    @Path("/comment")
-    public RestResponse<Comment> createComment(@MultipartForm CommentMultipartFormDTO commentMultipartFormDTO) {
+    @Consumes({"image/jpeg,image/png,image/bmp"})
+    @Path("/comment/")
+    public RestResponse<Comment> createCommentNew(File attachment,
+                                                  @NotNull @QueryParam("user_id") String userId,
+                                                  @NotNull @QueryParam("pitch_id") String pitchId,
+                                                  @NotNull @QueryParam("content") String content) {
         try {
-            UUID.fromString(commentMultipartFormDTO.getUserId());
+            UUID.fromString(userId);
         } catch (IllegalArgumentException exception) {
             RestResponse.ResponseBuilder.ok((Comment) null).status(RestResponse.Status.BAD_REQUEST).build();
         }
-        String attachment = null;
-        Comment comment = new Comment(commentMultipartFormDTO.getUserId(),
-                new ObjectId(commentMultipartFormDTO.getPitchId()), commentMultipartFormDTO.getContent(), null);
+        Comment comment = new Comment(userId, new ObjectId(pitchId), content, null);
         comment = commentRepository.addComment(comment);
-        attachment = uploadAttachment(commentMultipartFormDTO, comment.getId().toString());
-        if (attachment != null) {
-            comment = commentRepository.updateAttachment(comment.getId(), attachment);
+        String attachmentName = uploadAttachment(attachment, comment.getId().toString());
+        if (attachmentName != null) {
+            comment = commentRepository.updateAttachment(comment.getId(), attachmentName);
         }
         return RestResponse.ResponseBuilder.ok(comment).build();
 
@@ -66,20 +67,21 @@ public class CommentResource {
 
     @PATCH
     @ResponseStatus(200)
-    @Consumes(MediaType.MULTIPART_FORM_DATA)
+    @Consumes({"image/jpeg,image/png,image/bmp"})
     @Path("/comment/{id}")
-    public RestResponse<Comment> updateComment(@PathParam("id") String id, @MultipartForm CommentMultipartFormDTO commentMultipartFormDTO) {
+    public RestResponse<Comment> updateComment(@PathParam("id") String id,
+                                               File inputAttachment,
+                                               @QueryParam("content") String content) {
         Comment comment = commentRepository.findById(new ObjectId(id));
         if (comment == null) {
             return RestResponse.ResponseBuilder.ok((Comment) null).status(RestResponse.Status.NOT_FOUND).build();
         }
-        if (commentMultipartFormDTO.getAttachment() != null) {
-            commentMultipartFormDTO.setPitchId(id);
-            String attachment = uploadAttachment(commentMultipartFormDTO, comment.getId().toString());
+        if (inputAttachment != null) {
+            String attachment = uploadAttachment(inputAttachment, comment.getId().toString());
             comment = commentRepository.updateAttachment(new ObjectId(id), attachment);
         }
-        if (commentMultipartFormDTO.getContent() != null) {
-            comment = commentRepository.updateContent(new ObjectId(id), commentMultipartFormDTO.getContent());
+        if (content != null) {
+            comment = commentRepository.updateContent(new ObjectId(id), content);
         }
         return RestResponse.ResponseBuilder.ok(comment).build();
 
@@ -105,10 +107,10 @@ public class CommentResource {
         return RestResponse.ResponseBuilder.ok(comments).build();
     }
 
-    private String uploadAttachment(CommentMultipartFormDTO commentMultipartFormDTO, String commentId) {
+    private String uploadAttachment(File inputAttachment, String commentId) {
         String attachment = null;
-        if (commentMultipartFormDTO.getAttachment() != null && commentId != null) {
-            attachment = restClient.uploadBlob(commentId, StorageEntity.IMAGE_COMMENT, commentMultipartFormDTO.getAttachment());
+        if (inputAttachment != null && commentId != null) {
+            attachment = restClient.uploadBlob(commentId, StorageEntity.IMAGE_COMMENT, inputAttachment);
             if (attachment.contains("successfully")) {
                 attachment = "/blob/c/" + commentId;
             }
