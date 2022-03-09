@@ -34,7 +34,7 @@ public class CommentResource {
     @ResponseStatus(201)
     @Consumes({"image/jpeg,image/png,image/bmp"})
     @Path("/comment/")
-    public RestResponse<Comment> createCommentNew(File attachment,
+    public RestResponse<Comment> createComment(File attachment,
                                                   @NotNull @QueryParam("user_id") String userId,
                                                   @NotNull @QueryParam("pitch_id") String pitchId,
                                                   @NotNull @QueryParam("content") String content) {
@@ -45,9 +45,11 @@ public class CommentResource {
         }
         Comment comment = new Comment(userId, new ObjectId(pitchId), content, null);
         comment = commentRepository.addComment(comment);
-        String attachmentName = uploadAttachment(attachment, comment.getId().toString());
-        if (attachmentName != null) {
-            comment = commentRepository.updateAttachment(comment.getId(), attachmentName);
+        if(attachment != null) {
+            String attachmentName = uploadAttachment(attachment, comment.getId().toString());
+            if (attachmentName != null) {
+                comment = commentRepository.updateAttachment(comment.getId(), attachmentName);
+            }
         }
         return RestResponse.ResponseBuilder.ok(comment).build();
 
