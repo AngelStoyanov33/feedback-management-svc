@@ -45,7 +45,7 @@ public class CommentResource {
         }
         Comment comment = new Comment(userId, new ObjectId(pitchId), content, null);
         comment = commentRepository.addComment(comment);
-        if(attachment != null) {
+        if(attachment.length() != 0) {
             String attachmentName = uploadAttachment(attachment, comment.getId().toString());
             if (attachmentName != null) {
                 comment = commentRepository.updateAttachment(comment.getId(), attachmentName);
