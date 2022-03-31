@@ -1,4 +1,4 @@
-package me.angelstoyanov.sporton.management.user.exception;
+package me.angelstoyanov.sporton.management.feedback.exception;
 
 public class InvalidUserIdException extends RuntimeException{
     public InvalidUserIdException(String message) {

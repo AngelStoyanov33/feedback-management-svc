@@ -35,17 +35,21 @@ public class CommentResource {
     @Consumes({"image/jpeg,image/png,image/bmp"})
     @Path("/comment/")
     public RestResponse<Comment> createComment(File attachment,
-                                                  @NotNull @QueryParam("user_id") String userId,
-                                                  @NotNull @QueryParam("pitch_id") String pitchId,
-                                                  @NotNull @QueryParam("content") String content) {
+                                               @NotNull @QueryParam("user_id") String userId,
+                                               @NotNull @QueryParam("pitch_id") String pitchId,
+                                               @NotNull @QueryParam("content") String content,
+                                               @HeaderParam("X-Requesting-User-Id") String reqUserId) {
         try {
             UUID.fromString(userId);
         } catch (IllegalArgumentException exception) {
             RestResponse.ResponseBuilder.ok((Comment) null).status(RestResponse.Status.BAD_REQUEST).build();
         }
+        if (!reqUserId.equals(userId)) {
+            return RestResponse.ResponseBuilder.ok((Comment) null).status(RestResponse.Status.FORBIDDEN).build();
+        }
         Comment comment = new Comment(userId, new ObjectId(pitchId), content, null);
         comment = commentRepository.addComment(comment);
-        if(attachment.length() != 0) {
+        if (attachment.length() != 0) {
             String attachmentName = uploadAttachment(attachment, comment.getId().toString());
             if (attachmentName != null) {
                 comment = commentRepository.updateAttachment(comment.getId(), attachmentName);
@@ -73,10 +77,15 @@ public class CommentResource {
     @Path("/comment/{id}")
     public RestResponse<Comment> updateComment(@PathParam("id") String id,
                                                File inputAttachment,
-                                               @QueryParam("content") String content) {
+                                               @QueryParam("content") String content,
+                                               @HeaderParam("X-Requesting-User-Id") String userId) {
+
         Comment comment = commentRepository.findById(new ObjectId(id));
         if (comment == null) {
             return RestResponse.ResponseBuilder.ok((Comment) null).status(RestResponse.Status.NOT_FOUND).build();
+        }
+        if (!comment.getUserId().equals(userId)) {
+            return RestResponse.ResponseBuilder.ok((Comment) null).status(RestResponse.Status.FORBIDDEN).build();
         }
         if (inputAttachment != null) {
             String attachment = uploadAttachment(inputAttachment, comment.getId().toString());
@@ -92,8 +101,14 @@ public class CommentResource {
     @DELETE
     @ResponseStatus(204)
     @Path("/comment/{id}")
-    public RestResponse<Comment> deleteComment(@PathParam("id") String id) {
+    public RestResponse<Comment> deleteComment(@PathParam("id") String id,
+                                               @HeaderParam("X-Requesting-User-Role") String userRole,
+                                               @HeaderParam("X-Requesting-User-Id") String userId) {
         try {
+            Comment comment = commentRepository.findById(new ObjectId(id));
+            if (!comment.getUserId().equals(userId) && !userRole.equals("ADMIN")) {
+                return RestResponse.ResponseBuilder.ok((Comment) null).status(RestResponse.Status.FORBIDDEN).build();
+            }
             commentRepository.deleteCommentById(new ObjectId(id));
             return RestResponse.ResponseBuilder.ok((Comment) null).status(RestResponse.Status.NO_CONTENT).build();
         } catch (CommentNotExistsException e) {
@@ -104,7 +119,7 @@ public class CommentResource {
     @GET
     @ResponseStatus(200)
     @Path("/comment/all")
-    public RestResponse<List<Comment>> getCommentsByPitchId(@QueryParam("pitchId") String id) {
+    public RestResponse<List<Comment>> getCommentsByPitchId(@QueryParam("pitch_id") String id) {
         List<Comment> comments = commentRepository.findCommentsByPitchId(new ObjectId(id));
         return RestResponse.ResponseBuilder.ok(comments).build();
     }

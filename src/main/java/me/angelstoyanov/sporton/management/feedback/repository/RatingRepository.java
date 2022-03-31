@@ -2,6 +2,7 @@ package me.angelstoyanov.sporton.management.feedback.repository;
 
 import io.quarkus.mongodb.panache.PanacheMongoRepository;
 import io.quarkus.runtime.annotations.RegisterForReflection;
+import me.angelstoyanov.sporton.management.feedback.exception.InvalidUserIdException;
 import me.angelstoyanov.sporton.management.feedback.exception.RatingAlreadyExistsException;
 import me.angelstoyanov.sporton.management.feedback.exception.RatingNotExistsException;
 import me.angelstoyanov.sporton.management.feedback.model.Rating;
@@ -12,6 +13,7 @@ import javax.enterprise.context.ApplicationScoped;
 import javax.inject.Named;
 import java.util.List;
 import java.util.Locale;
+import java.util.UUID;
 import java.util.concurrent.atomic.AtomicReference;
 
 @Named("RatingRepository")
@@ -20,16 +22,27 @@ import java.util.concurrent.atomic.AtomicReference;
 public class RatingRepository implements PanacheMongoRepository<Rating> {
 
     public Rating addRating(Rating rating) throws RatingAlreadyExistsException {
-        if (findRatingByUserIdAndPitchId(rating.getUserId().toString(), rating.getPitchId().toString()) != null) {
-            throw new RatingAlreadyExistsException("Rating from user with ID" + rating.getUserId()
-                    + "for pitch with ID " + rating.getPitchId() + " already exists.");
+        try {
+            UUID.fromString(rating.getUserId());
+        } catch (IllegalArgumentException exception) {
+            throw new InvalidUserIdException("Invalid user id " + rating.getUserId());
         }
-        persist(rating);
-        return rating;
+        try {
+            findRatingByUserIdAndPitchId(rating.getUserId(), rating.getPitchId().toString());
+        } catch (RatingNotExistsException e) {
+            persist(rating);
+            return rating;
+        }
+        throw new RatingAlreadyExistsException("Rating from user with ID" + rating.getUserId()
+                + "for pitch with ID " + rating.getPitchId() + " already exists.");
     }
 
     public Rating findRatingByUserIdAndPitchId(String userId, String pitchId) {
-        return find(String.format(Locale.US, "{\"pitch_id\":ObjectId(\"%s\"),\"user_id\":\"%s\"}", pitchId, userId)).firstResult();
+        Rating rating = find(String.format(Locale.US, "{\"pitch_id\":ObjectId(\"%s\"),\"user_id\":\"%s\"}", pitchId, userId)).firstResult();
+        if (rating == null) {
+            throw new RatingNotExistsException("Rating from user with ID: " + userId + " for pitch with ID: " + pitchId + " does not exist.");
+        }
+        return rating;
     }
 
     public List<Rating> getRatingsByPitchId(String pitchId) {

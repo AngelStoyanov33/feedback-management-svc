@@ -1,6 +1,7 @@
 package me.angelstoyanov.sporton.management.feedback.resource;
 
 import io.quarkus.runtime.annotations.RegisterForReflection;
+import me.angelstoyanov.sporton.management.feedback.exception.InvalidUserIdException;
 import me.angelstoyanov.sporton.management.feedback.exception.RatingAlreadyExistsException;
 import me.angelstoyanov.sporton.management.feedback.exception.RatingNotExistsException;
 import me.angelstoyanov.sporton.management.feedback.model.Rating;
@@ -28,12 +29,34 @@ public class RatingResource {
     @POST
     @ResponseStatus(201)
     @Path("/rating")
-    public RestResponse<Rating> createRating(Rating rating) {
+    public RestResponse<Rating> createRating(Rating rating,
+                                             @HeaderParam("X-Requesting-User-Id") String userId) {
         try {
+            if (!rating.getUserId().equals(userId)) {
+                return RestResponse.ResponseBuilder.ok((Rating) null).status(RestResponse.Status.FORBIDDEN).build();
+            }
             ratingRepository.addRating(rating);
             return RestResponse.ResponseBuilder.ok(rating).build();
         } catch (RatingAlreadyExistsException e) {
             return RestResponse.ResponseBuilder.ok((Rating) null).status(RestResponse.Status.CONFLICT).build();
+        } catch (InvalidUserIdException e) {
+            return RestResponse.ResponseBuilder.ok((Rating) null).status(RestResponse.Status.BAD_REQUEST).build();
+        }
+    }
+
+    @GET
+    @ResponseStatus(200)
+    @Path("/rating")
+    public RestResponse<Rating> getRatingByUserAndPitchId(@QueryParam("user_id") String userId,
+                                                          @QueryParam("pitch_id") String pitchId) {
+        try {
+
+            Rating rating = ratingRepository.findRatingByUserIdAndPitchId(userId, pitchId);
+            return RestResponse.ResponseBuilder.ok(rating).build();
+        } catch (RatingNotExistsException e) {
+            return RestResponse.ResponseBuilder.ok((Rating) null).status(RestResponse.Status.NOT_FOUND).build();
+        } catch (InvalidUserIdException e) {
+            return RestResponse.ResponseBuilder.ok((Rating) null).status(RestResponse.Status.BAD_REQUEST).build();
         }
     }
 
@@ -51,7 +74,7 @@ public class RatingResource {
     @GET
     @ResponseStatus(200)
     @Path("/rating/average")
-    public RestResponse<AverageRatingDTO> getAverageRating(@QueryParam("pitchId") String pitchId) {
+    public RestResponse<AverageRatingDTO> getAverageRating(@QueryParam("pitch_id") String pitchId) {
         if (pitchId == null) {
             return RestResponse.ResponseBuilder.ok((AverageRatingDTO) null).build();
         }
@@ -64,7 +87,7 @@ public class RatingResource {
     @GET
     @ResponseStatus(200)
     @Path("/rating/all")
-    public RestResponse<List<Rating>> getAllRatings(@QueryParam("pitchId") String pitchId) {
+    public RestResponse<List<Rating>> getAllRatings(@QueryParam("pitch_id") String pitchId) {
         List<Rating> ratings = ratingRepository.getRatingsByPitchId(pitchId);
         return RestResponse.ResponseBuilder.ok(ratings).build();
     }
@@ -72,8 +95,14 @@ public class RatingResource {
     @DELETE
     @ResponseStatus(204)
     @Path("/rating/{id}")
-    public RestResponse<Rating> deleteRating(@PathParam("id") String id) {
+    public RestResponse<Rating> deleteRating(@PathParam("id") String id,
+                                             @HeaderParam("X-Requesting-User-Role") String userRole,
+                                             @HeaderParam("X-Requesting-User-Id") String userId) {
         try {
+            Rating rating = ratingRepository.findById(new ObjectId(id));
+            if (!rating.getUserId().equals(userId) && !userRole.equals("ADMIN")) {
+                return RestResponse.ResponseBuilder.ok((Rating) null).status(RestResponse.Status.FORBIDDEN).build();
+            }
             ratingRepository.deleteRatingById(new ObjectId(id));
             return RestResponse.ResponseBuilder.ok((Rating) null).status(RestResponse.Status.NO_CONTENT).build();
         } catch (RatingNotExistsException e) {
@@ -84,9 +113,15 @@ public class RatingResource {
     @PATCH
     @ResponseStatus(200)
     @Path("/rating/{id}")
-    public RestResponse<Rating> updateRatingGrade(@PathParam("id") String id, EditRatingDTO editRatingDTO) {
+    public RestResponse<Rating> updateRatingGrade(@PathParam("id") String id,
+                                                  EditRatingDTO editRatingDTO,
+                                                  @HeaderParam("X-Requesting-User-Id") String userId) {
         try {
-            Rating rating = ratingRepository.updateRating(new ObjectId(id), editRatingDTO);
+            Rating rating = ratingRepository.findById(new ObjectId(id));
+            if (!rating.getUserId().equals(userId)) {
+                return RestResponse.ResponseBuilder.ok((Rating) null).status(RestResponse.Status.FORBIDDEN).build();
+            }
+            rating = ratingRepository.updateRating(new ObjectId(id), editRatingDTO);
             return RestResponse.ResponseBuilder.ok(rating).build();
         } catch (RatingNotExistsException e) {
             return RestResponse.ResponseBuilder.ok((Rating) null).build();

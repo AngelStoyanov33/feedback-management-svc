@@ -7,7 +7,7 @@ import io.quarkus.runtime.annotations.RegisterForReflection;
 import org.bson.types.ObjectId;
 
 @JsonRootName("rating")
-@JsonPropertyOrder({"id", "rating"})
+@JsonPropertyOrder({"id", "grade"})
 @RegisterForReflection
 public class EditRatingDTO {
     @JsonProperty("id")

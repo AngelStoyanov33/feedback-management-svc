@@ -7,7 +7,7 @@ import io.quarkus.runtime.annotations.RegisterForReflection;
 import org.bson.types.ObjectId;
 
 @JsonRootName("rating")
-@JsonPropertyOrder({"id", "user_id", "average_rating"})
+@JsonPropertyOrder({"pitch_id", "average_rating"})
 @RegisterForReflection
 public class AverageRatingDTO {
     @JsonProperty("pitch_id")
